@@ -37,3 +37,16 @@ function search(dev::Ptr{Device}, type_::ModuleType, index::Integer)
 		dev, pointer_from_objref(mod), type_, index))
 	return mod
 end
+
+function openable(mod::Ptr{Module})
+	local rc = ccall(("b0_module_openable", "libbox0"),
+		ResultCode, (Ptr{Module}, ), mod)
+
+	if rc == OK
+		return true
+	elseif rc == ERR_UNAVAIL
+		return false
+	end
+
+	act(rc)
+end

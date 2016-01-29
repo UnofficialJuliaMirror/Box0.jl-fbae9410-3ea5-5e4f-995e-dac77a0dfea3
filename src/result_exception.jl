@@ -36,3 +36,6 @@ explain(r::ResultException) = bytestring(explain(r.value))
 showerror(io::IO, r::ResultException) = print(io, name(r), ": ", explain(r))
 
 act(r::ResultCode) = (r < 0 ? throw(ResultException(r)) : nothing)
+
+const OK = ResultCode(0)
+const ERR_UNAVAIL = ResultCode(-16)
