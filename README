@@ -1,0 +1,49 @@
+Box0.jl
+=======
+
+Julia Binding for libbox0
+
+Dependencies
+============
+
+Actually: None
+
+* libbox0 (C library)
+* libusb (C library)
+
+Installation
+============
+
+TODO: place instructions
+
+Configuration
+=============
+
+None
+
+Getting help
+============
+
+get on to #box0 on IRC freenode
+and report bug on <git repo link>
+
+Getting involved
+================
+
+get on to #box0 on IRC freenode
+and report bug on <git repo link>
+
+Licence
+=======
+
+GNU/GPLv3 or later (see COPYING)
+
+Credits and references
+======================
+
+http://www.madresistor.com/
+
+Maintainer
+==========
+
+Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
