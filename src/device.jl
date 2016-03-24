@@ -17,21 +17,23 @@
 #
 
 export close, info, ping, manuf, name, serial
-export start, next, stop
 
-close(dev::Ptr{Device}) = act(ccall(("b0_device_close", "libbox0"), ResultCode, (Ptr{Device}, ), dev))
-ping(dev::Ptr{Device}) = act(ccall(("b0_device_ping", "libbox0"), ResultCode, (Ptr{Device}, ), dev))
-info(dev::Ptr{Device}) = act(ccall(("b0_device_info", "libbox0"), ResultCode, (Ptr{Device}, ), dev))
+close(dev::Ptr{Device}) = act(ccall(("b0_device_close", "libbox0"),
+		ResultCode, (Ptr{Device}, ), dev))
 
-name(dev::Ptr{Device}) = bytestring(dev.name)
-manuf(dev::Ptr{Device}) = bytestring(dev.manuf)
-serial(dev::Ptr{Device}) = bytestring(dev.serial)
+ping(dev::Ptr{Device}) = act(ccall(("b0_device_ping", "libbox0"),
+		ResultCode, (Ptr{Device}, ), dev))
+
+info(dev::Ptr{Device}) = act(ccall(("b0_device_info", "libbox0"),
+		ResultCode, (Ptr{Device}, ), dev))
+
+name(dev::Ptr{Device}) = bytestring(deref(dev).name)
+manuf(dev::Ptr{Device}) = bytestring(deref(dev).manuf)
+serial(dev::Ptr{Device}) = bytestring(deref(dev).serial)
 
 # internal work
-modules_len(dev::Ptr{Device}) = unsafe_load(dev, 1).modules_len
-modules(dev::Ptr{Device}) = unsafe_load(dev, 1).modules
-module_offset_valid(dev::Ptr{Device}, i::Csize_t) = (i <= modules_len(dev))
-unsafe_get_module(dev::Ptr{Device}, i::Csize_t) = unsafe_load(modules(dev), i)
+module_offset_valid(dev::Ptr{Device}, i::Csize_t) = (i <= deref(dev).modules_len)
+unsafe_get_module(dev::Ptr{Device}, i::Csize_t) = unsafe_load(deref(dev).modules, i)
 function safe_get_module(dev::Ptr{Device}, i::Csize_t)
 	if !module_offset_valid(dev, i)
 		throw(ArgumentError("index out of range"))
@@ -40,9 +42,10 @@ function safe_get_module(dev::Ptr{Device}, i::Csize_t)
 end
 
 # just for ease
-length(dev::Ptr{Device}) = modules_len(dev)
+Base.length(dev::Ptr{Device}) = deref(dev).modules_len
 
 # device iterator
-start(dev::Ptr{Device}) = one(Csize_t)
-next(dev::Ptr{Device}, state::Csize_t) = (unsafe_get_module(dev, state), state + one(state))
-done(dev::Ptr{Device}, state::Csize_t) = (! module_offset_valid(dev, state))
+Base.start(dev::Ptr{Device}) = one(Csize_t)
+Base.next(dev::Ptr{Device}, state::Csize_t) =
+	(unsafe_get_module(dev, state), state + one(state))
+Base.done(dev::Ptr{Device}, state::Csize_t) = (! module_offset_valid(dev, state))

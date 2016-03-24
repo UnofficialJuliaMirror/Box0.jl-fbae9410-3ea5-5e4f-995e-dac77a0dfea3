@@ -27,8 +27,10 @@ end
 
 # libbox0 calls.
 # not intended for direct use
-name(r::ResultCode) = ccall(("b0_result_name", "libbox0"), Cstring, (ResultCode, ), r)
-explain(r::ResultCode) = ccall(("b0_result_explain", "libbox0"), Cstring, (ResultCode, ), r)
+name(r::ResultCode) =
+	ccall(("b0_result_name", "libbox0"), Ptr{UInt8}, (ResultCode, ), r)
+explain(r::ResultCode) =
+	ccall(("b0_result_explain", "libbox0"), Ptr{UInt8}, (ResultCode, ), r)
 
 name(r::ResultException) = bytestring(name(r.value))
 explain(r::ResultException) = bytestring(explain(r.value))

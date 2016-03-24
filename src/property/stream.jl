@@ -1,6 +1,6 @@
 #
 # This file is part of Box0.jl.
-# Copyright (C) 2015 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+# Copyright (C) 2016 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
 #
 # Box0.jl is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,34 +16,19 @@
 # along with Box0.jl.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-export Device, Module_, ModuleType, Backend
+export Stream
 
-# these has to be before everything because julia do not
-#  support forward declaration
-# see: https://github.com/JuliaLang/julia/issues/269
-
-abstract Backend
-
-immutable _Device{M}
-	modules_len::Csize_t
-	modules::Ptr{Ptr{M}}
-	name::Ptr{UInt8}
-	manuf::Ptr{UInt8}
-	serial::Ptr{UInt8}
-	_backend_data::Ptr{Void}
-	_frontend_data::Ptr{Void}
-	_backend::Ptr{Backend}
-end
-
-typealias ModuleType Cint
-
-immutable Module_
-	type_::ModuleType
-	index::Cint
-	name::Ptr{UInt8}
-	device::Ptr{_Device{Module_}}
+immutable StreamValue
+	speed::UInt32
+	bitsize::UInt8
 	_backend_data::Ptr{Void}
 	_frontend_data::Ptr{Void}
 end
 
-typealias Device _Device{Module_}
+immutable Stream
+	header::Property
+	values_len::Csize_t
+	values::Ptr{StreamValue}
+end
+
+#TODO: stream search

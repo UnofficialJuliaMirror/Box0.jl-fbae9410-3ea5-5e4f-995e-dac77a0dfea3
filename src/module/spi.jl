@@ -124,13 +124,13 @@ spi_auto_gen(x::SpiOutHdRead) = SpiInHdRead(x.bRead, spi_array_type(x.bBitsize))
 spi_auto_gen{T}(x::SpiOutHdWrite{T}) = SpiInHdWrite(UInt8(0))
 
 immutable Spi
-	header::Module
+	header::Module_
 	bitsize::Ptr{Bitsize}
 	buffer::Ptr{Buffer}
-	capab::Ptr{Capabilities}
+	capab::Ptr{Capab}
 	count::Ptr{Count}
 	label::Ptr{Label}
-	ref::Ptr{Reference}
+	ref::Ptr{Ref_}
 	speed::Ptr{Speed}
 end
 

@@ -45,7 +45,7 @@ const SPI_VARIANT = PropertyType(102)
 immutable Property
 	type_::PropertyType
 
-	module_::Ptr{Module}
+	module_::Ptr{Module_}
 
 	backend_data::Ptr{Void}
 	frontend_data::Ptr{Void}

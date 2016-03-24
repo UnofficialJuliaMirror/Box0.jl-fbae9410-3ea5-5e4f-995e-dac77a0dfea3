@@ -57,10 +57,10 @@ type I2cInWrite
 end
 
 immutable I2c
-	header::Module
+	header::Module_
 	buffer::Ptr{Buffer}
 	label::Ptr{Label}
-	ref::Ptr{Ref}
+	ref::Ptr{Ref_}
 	version::Ptr{I2cVersion}
 end
 

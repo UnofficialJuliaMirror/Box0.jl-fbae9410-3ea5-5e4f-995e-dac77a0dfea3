@@ -18,6 +18,7 @@
 
 export info, search, name
 export DIO, AOUT, AIN, SPI, I2C, PWM, CAN, CEC, CMP, UNIO
+export name, index, type_, device
 
 const DIO = ModuleType(1)
 const AOUT = ModuleType(2)
@@ -27,20 +28,25 @@ const I2C = ModuleType(5)
 const PWM = ModuleType(6)
 const UNIO = ModuleType(7)
 
-name(mod::Ptr{Module}) = bytestring(mod.name)
-info(mod::Ptr{Module}) = act(ccall(("b0_module_info", "libbox0"), ResultCode, (Ptr{Module}, ), mod))
+name(mod::Ptr{Module_}) = bytestring(deref(mod).name)
+index(mod::Ptr{Module_}) = deref(mod).index
+type_(mod::Ptr{Module_}) = deref(mod).type_
+device(mod::Ptr{Module_}) = deref(mod).device
+
+info(mod::Ptr{Module_}) = act(ccall(("b0_module_info", "libbox0"),
+    ResultCode, (Ptr{Module_}, ), mod))
 
 function search(dev::Ptr{Device}, type_::ModuleType, index::Integer)
-	local mod::Ptr{Module}
+	local mod::Ptr{Module_}
 	act(ccall(("b0_module_search", "libbox0"),
-		ResultCode, (Ptr{Device}, Ptr{Ptr{Module}}, ModuleType, Cint),
+		ResultCode, (Ptr{Device}, Ptr{Ptr{Module_}}, ModuleType, Cint),
 		dev, pointer_from_objref(mod), type_, index))
 	return mod
 end
 
-function openable(mod::Ptr{Module})
+function openable(mod::Ptr{Module_})
 	local rc = ccall(("b0_module_openable", "libbox0"),
-		ResultCode, (Ptr{Module}, ), mod)
+		ResultCode, (Ptr{Module_}, ), mod)
 
 	if rc == OK
 		return true

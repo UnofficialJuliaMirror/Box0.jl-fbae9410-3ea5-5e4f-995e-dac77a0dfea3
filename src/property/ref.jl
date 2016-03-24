@@ -1,6 +1,6 @@
 #
 # This file is part of Box0.jl.
-# Copyright (C) 2015 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+# Copyright (C) 2016 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
 #
 # Box0.jl is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,22 +16,15 @@
 # along with Box0.jl.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-export info, cache_flush
+export Ref_
 
-for (t::Type, n::AbstractString) in [(Bitsize, "bitsize"), (Buffer, "buffer"),
-		(Capab, "capab"), (Count, "count"),
-		(ChanConfig, "chan_config"), (ChanSeq, "chan_seq"),
-		(Label, "label"), (Ref_, "ref"), (Speed, "speed"),
-		(Stream, "stream"), (Repeat, "repeat")]
+typealias RefType Cint
+const VOLTAGE = RefType(0)
+const CURRENT = RefType(1)
 
-	func_info = @eval "b0_"*$n*"_info"
-	func_cache_flush = @eval "b0_"*$n*"_cache_flush"
-
-	@eval begin
-		info(prop::Ptr{$t}) = act(ccall(($func_info, "libbox0"),
-			ResultCode, (Ptr{$t}, ), mod))
-
-		cache_flush(prop::Ptr{$t}) = act(ccall(($func_cache_flush, "libbox0"),
-			ResultCode, (Ptr{$t}, ), mod))
-	end
+immutable Ref_
+	header::Property
+	type_::RefType
+	low::Float64
+	high::Float64
 end

@@ -28,8 +28,8 @@ const WARN = LogLevel(2)
 const INFO = LogLevel(3)
 const DEBUG = LogLevel(4)
 
-log(dev::Ptr{Device}, val::LogLevel) =
-	act(ccall(("b0_device_log", "libbox0"), ResultCode,  (Ptr{Device}, LogLevel), dev, val))
+log(dev::Ptr{Device}, val::LogLevel) = act(ccall(("b0_device_log", "libbox0"),
+		ResultCode, (Ptr{Device}, LogLevel), dev, val))
 
 type Version
 	major::UInt8
@@ -40,6 +40,7 @@ end
 version_extract(v::Ref{Version} = C_NULL(Version)) =
 	ccall(("b0_version_extract", "libbox0"), UInt32, (Ref{Version}, ), v)
 
-convert(::Type{VersionNumber}, v::Version) = VersionNumber(v.major, v.minor, v.patch)
+Base.convert(::Type{VersionNumber}, v::Version) =
+    VersionNumber(v.major, v.minor, v.patch)
 
 version() = (z = zero(UInt8); v = Version(z, z, z); version_extract(Ref(v)); VersionNumber(v))

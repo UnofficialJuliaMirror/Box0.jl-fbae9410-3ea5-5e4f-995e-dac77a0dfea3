@@ -20,12 +20,12 @@ export Pwm, PwmReg
 export width, period, set, calc, start, stop
 
 type Pwm
-	header::Module
+	header::Module_
 	bitsize::Ptr{Bitsize}
-	capab::Ptr{Capabilities}
+	capab::Ptr{Capab}
 	count::Ptr{Count}
 	label::Ptr{Label}
-	ref::Ptr{Reference}
+	ref::Ptr{Ref_}
 	speed::Ptr{Speed}
 end
 

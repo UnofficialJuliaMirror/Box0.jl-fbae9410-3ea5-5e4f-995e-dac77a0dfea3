@@ -18,17 +18,17 @@
 
 export LOW, HIGH, DISABLE, ENABLE, INPUT, OUTPUT
 export Dio, Pin, PinGroup, UInt8
-export input, output, high, low, toggle
+export input, output, high, low, toggle, enable, disable
 export value, value_toggle, dir, hiz
 export static_prepare
 export pin, pin_group
 
 immutable Dio
-	header::Module
-	capab::Ptr{Capabilities}
+	header::Module_
+	capab::Ptr{Capab}
 	count::Ptr{Count}
 	label::Ptr{Label}
-	ref::Ptr{Reference}
+	ref::Ptr{Ref_}
 end
 
 #pin
@@ -38,6 +38,7 @@ type Pin
 end
 
 pin(mod::Ptr{Dio}, val::UInt8) = Pin(mod, val)
+pin(mod::Ptr{Dio}, val::Integer) = pin(mod, UInt8(val))
 
 #pin group
 type PinGroup
@@ -181,6 +182,8 @@ output(mod::Ptr{Dio}, pin::UInt8) = dir(mod, pin, OUTPUT)
 high(mod::Ptr{Dio}, pin::UInt8) = value(mod, pin, HIGH)
 low(mod::Ptr{Dio}, pin::UInt8) = value(mod, pin, LOW)
 toggle(mod::Ptr{Dio}, pin::UInt8) = value_toggle(mod, pin)
+enable(mod::Ptr{Dio}, pin::UInt8) = hiz(mod, pin, DISABLE)
+disable(mod::Ptr{Dio}, pin::UInt8) = hiz(mod, pin, ENABLE)
 
 #easy to use (multiple)
 input(mod::Ptr{Dio}, pins::Ptr{UInt8}) = dir(mod, pins, INPUT)
@@ -189,6 +192,8 @@ high(mod::Ptr{Dio}, pins::Ptr{UInt8}) = value(mod, pins, HIGH)
 low(mod::Ptr{Dio}, pins::Ptr{UInt8}) = value(mod, pins, LOW)
 toggle(mod::Ptr{Dio}, pins::Ptr{UInt8}, size::Csize_t) = value_toggle(mod, pins, size)
 toggle(mod::Ptr{Dio}, pins::Array{UInt8}) = value_toggle(mod, pins)
+enable(mod::Ptr{Dio}, pins::Ptr{UInt8}) = hiz(mod, pins, DISABLE)
+disable(mod::Ptr{Dio}, pins::Ptr{UInt8}) = hiz(mod, pins, ENABLE)
 
 #easy to use (all)
 input(mod::Ptr{Dio}) = dir(mod, INPUT)
@@ -196,6 +201,8 @@ output(mod::Ptr{Dio}) = dir(mod, OUTPUT)
 high(mod::Ptr{Dio}) = value(mod, HIGH)
 low(mod::Ptr{Dio}) = value(mod, LOW)
 toggle(mod::Ptr{Dio}) = value_toggle(mod)
+enable(mod::Ptr{Dio}) = hiz(mod, DISABLE)
+disable(mod::Ptr{Dio}) = hiz(mod, ENABLE)
 
 # easy to use (pin)
 input(pin::Pin) = input(pin.mod, pin.val)
@@ -203,6 +210,8 @@ output(pin::Pin) = output(pin.mod, pin.val)
 high(pin::Pin) = high(pin.mod, pin.val)
 low(pin::Pin) = low(pin.mod, pin.val)
 toggle(pin::Pin) = toggle(pin.mod, pin.val)
+enable(pin::Pin) = enable(pin.mod, pin.val)
+disable(pin::Pin) = disable(pin.mod, pin.val)
 
 #easy to use (pin group)
 input(pin_group::PinGroup) = input(pin_group.mod, pin_group.vals)
@@ -210,3 +219,5 @@ output(pin_group::PinGroup) = output(pin_group.mod, pin_group.vals)
 high(pin_group::PinGroup) = high(pin_group.mod, pin_group.vals)
 low(pin_group::PinGroup) = low(pin_group.mod, pin_group.vals)
 toggle(pin_group::PinGroup) = toggle(pin_group.mod, pin_group.vals)
+enable(pin_group::PinGroup) = enable(pin_group.mod, pin_group.vals)
+disable(pin_group::PinGroup) = disable(pin_group.mod, pin_group.vals)

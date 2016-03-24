@@ -22,15 +22,15 @@ export static_prepare, static_start, static_stop
 export stream_prepare, stream_start, stream_stop
 
 immutable Ain
-	header::Module
+	header::Module_
 	bitsize::Ptr{Bitsize}
 	buffer::Ptr{Buffer};
-	capab::Ptr{Capabilities}
+	capab::Ptr{Capab}
 	count::Ptr{Count}
-	chan_config::Ptr{ChannelConfiguration}
-	chan_seq::Ptr{ChannelSequence}
+	chan_config::Ptr{ChanConfig}
+	chan_seq::Ptr{ChanSeq}
 	label::Ptr{Label}
-	ref::Ptr{Reference}
+	ref::Ptr{Ref_}
 	speed::Ptr{Speed}
 	stream::Ptr{Stream}
 end

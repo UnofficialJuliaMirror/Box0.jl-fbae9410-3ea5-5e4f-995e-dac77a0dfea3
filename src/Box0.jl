@@ -16,44 +16,19 @@
 # along with Box0.jl.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-#why baremodule? because we need to define a type "Module"
-baremodule Box0
+module Box0
 
-import Base
-import Base: include, println, one, print, bytestring, call, convert, join
-import Base: eval, @eval, assert, @assert
-import Base: start, done, next, length, showerror, error, sizeof
-import Base: write, read, htol, ltoh, seek, colon
-import Base: Csize_t, Cint, IO, Ptr, Ref, Cdouble, Cfloat, Cuintmax_t, Cstring
-import Base: unsafe_load, unsafe_store!, pointer_from_objref, pointer
-import Base: setindex!, getindex
-import Base: zero, one, ceil, zip
-import Base: >, <, <=, >=, !, +, ==, *, !=, |, &, /, <:
-import Base: Exception, VersionNumber, Type, IOBuffer
 
 #Constuct C_NULL of different types
 C_NULL{T}(::Type{T} = Type{Void}) = Ptr{T}(0)
 
-eval(e::Expr) = eval(Box0, e)
-
 # like Cint, Csize_t and other...
 typealias Cbool Cint
 
-convert(::Type{Bool}, x::Cbool) = (x != 0)
+Base.convert(::Type{Bool}, x::Cbool) = (x != 0)
 
-abstract Bitsize
-abstract Buffer
-abstract Capabilities
-abstract ChannelConfiguration
-abstract ChannelSequence
-abstract Label
-abstract Reference
-abstract Speed
-abstract Stream
-abstract Repeat
-abstract I2cVersion
-
-abstract StreamValue
+export deref #others can use
+deref{T}(v::Ptr{T}) = unsafe_load(v, 1)
 
 include("first_include.jl")
 include("basic.jl")
@@ -64,6 +39,17 @@ include("backend/usb.jl")
 
 include("property/property.jl")
 include("property/count.jl")
+include("property/buffer.jl")
+include("property/capab.jl")
+include("property/chan_config.jl")
+include("property/ref.jl")
+include("property/stream.jl")
+include("property/repeat.jl")
+include("property/i2c_version.jl")
+include("property/label.jl")
+include("property/bitsize.jl")
+include("property/chan_seq.jl")
+include("property/speed.jl")
 include("property/last_include.jl")
 
 include("module/module.jl")
@@ -74,5 +60,7 @@ include("module/pwm.jl")
 include("module/spi.jl")
 include("module/i2c.jl")
 include("module/last_include.jl")
+
+export Usb
 
 end

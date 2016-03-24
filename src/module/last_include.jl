@@ -17,36 +17,55 @@
 #
 
 export open, close, cache_flush, info
-export ain, aout, spi, i2c, pwm, dio
+export ain, aout, spi, i2c, pwm, dio, device, index, name
 
 for (t::Type, n::AbstractString) in [(Ain, "ain"), (Aout, "aout"), (Spi, "spi"),
 									(I2c, "i2c"), (Pwm, "pwm"), (Dio, "dio")]
-	func = @eval "b0_"*$n*"_close"
-	@eval close(mod::Ptr{$t}) = act(ccall(($func, "libbox0"), ResultCode, (Ptr{$t}, ), mod))
-	func = @eval "b0_"*$n*"_info"
-	@eval info(mod::Ptr{$t}) = act(ccall(($func, "libbox0"), ResultCode, (Ptr{$t}, ), mod))
-	func = @eval "b0_"*$n*"_cache_flush"
-	@eval cache_flush(mod::Ptr{$t}) = act(ccall(($func, "libbox0"), ResultCode, (Ptr{$t}, ), mod))
-
-	func = @eval "b0_"*$n*"_open"
-	@eval begin
-		open(dev::Ptr{Device}, mod::Ref{Ptr{$t}}, index::Cint = Cint(0)) =
-			act(ccall(($func, "libbox0"), ResultCode,
-					(Ptr{Device}, Ref{Ptr{$t}}, Cint), dev, mod, index))
-	end
-
+	func_close = @eval "b0_"*$n*"_close"
+	func_info = @eval "b0_"*$n*"_info"
+	func_cache_flush = @eval "b0_"*$n*"_cache_flush"
+	func_open = @eval "b0_"*$n*"_open"
 	open_by_name = @eval Symbol($n)
+
 	@eval begin
+		close(mod::Ptr{$t}) = act(ccall(($func_close, "libbox0"),
+			ResultCode, (Ptr{$t}, ), mod))
+
+		info(mod::Ptr{$t}) = act(ccall(($func_info, "libbox0"),
+			ResultCode, (Ptr{$t}, ), mod))
+
+		cache_flush(mod::Ptr{$t}) = act(ccall(($func_cache_flush, "libbox0"),
+			ResultCode, (Ptr{$t}, ), mod))
+
+		open(dev::Ptr{Device}, mod::Ref{Ptr{$t}}, index::Cint = Cint(0)) =
+			act(ccall(($func_open, "libbox0"), ResultCode,
+					(Ptr{Device}, Ref{Ptr{$t}}, Cint), dev, mod, index))
+
 		$open_by_name(dev::Ptr{Device}, index::Cint = Cint(0)) =
 			(mod = Ref{Ptr{$t}}(0); open(dev, mod, index); mod[])
+
+		# direct access to header
+		device(mod::Ptr{$t}) = deref(mod).header.device
+		index(mod::Ptr{$t}) = deref(mod).header.index
+		name(mod::Ptr{$t}) = bytestring(deref(mod).header.name)
+	end
+
+	# access to properties using method
+	for field in fieldnames(t)
+		if field != :header
+			@eval begin
+				$field(mod::Ptr{$t}) = deref(mod).$field
+				export $field
+			end
+		end
 	end
 end
 
-function open(mod::Ptr{Module})
+function open(mod::Ptr{Module_})
 	for (t::ModuleType, func::Function) in [(AIN, ain), (AOUT, aout),
 							(SPI, spi), (I2C, i2c), (PWM, pwm), (DIO, dio)]
 		if mod.type == t
-			return func(mod.device, mod.index)
+			return func(device(mod), index(mod))
 		end
 	end
 	error("Module(", mod, ") type unknown")
