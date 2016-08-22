@@ -1,28 +1,19 @@
 import Box0: Usb
-import Box0: start, spi, close, spi_auto_gen
-import Box0: SpiOutFd, SpiInFd
-import Box0: SPI_CONFIG_MODE_0
-
-const ss0 = UInt8(0)
-const bitsize = UInt8(8)
-const mode = UInt8(0)
-const msb_first = false
-const COUNT = UInt8(5)
+import Box0: start, spi, close
+import Box0: SpiTaskFd
 
 dev = Usb.open_supported()
 spi0 = spi(dev)
 
-out = SpiOutFd(ss0, mode, msb_first, bitsize, COUNT)
-in = spi_auto_gen(out)
+out = Array{UInt8}([0x48, 0x26, 0x98, 0x89, 0x38])
+in = Array{UInt8}(5)
 
-out.xData[1] = 0x01
-out.xData[2] = 0x02
-out.xData[3] = 0x03
-out.xData[4] = 0x04
-out.xData[4] = 0x05
+task = [SpiTaskFd(0, out, in, bitsize=8), SpiTaskFd(0, out, in, bitsize=8, last=true)]
+start(spi0, task)
 
-start(spi0, (Ref(out), ), (Ref(in), ))
-if out.xData == in.xData
+println("out[:] ", out[:])
+println("in[:] ", in[:])
+if out[:] == in[:]
 	println("Data matched!")
 else
 	println("We have problem, data did not match")
