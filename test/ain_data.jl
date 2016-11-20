@@ -1,20 +1,25 @@
 import Box0
 import Box0: Usb
-import Box0: log, ain, static_prepare, static_start, close
+import Box0: log, ain, snapshot_prepare, snapshot_start, close, bitsize_speed_set
+
+BITSIZE = Cuint(12)
+SPEED = Culong(60000) # 600KS/s
 
 dev = Usb.open_supported()
 log(dev, Box0.DEBUG)
 ain0 = ain(dev)
-static_prepare(ain0)
-speed = 60000 # 600KS/s  (assuming)
+snapshot_prepare(ain0)
+
+bitsize_speed_set(ain0, BITSIZE, SPEED)
 val = Array{Float32}(100)
-static_start(ain0, val)
+snapshot_start(ain0, val)
+
 println(val)
 close(ain0)
 close(dev)
 
 using PyPlot: plot, show, title
-x = linspace(0, length(val) / float(speed), length(val))
+x = linspace(0, length(val) / float(SPEED), length(val))
 y = val
 plot(x, y, color="red")
 title("AIN0 test data")

@@ -17,7 +17,8 @@
 #
 
 export Spi, SpiTask
-export start, stop, active_state
+export master_prepare, master_start, master_stop
+export active_state_set, active_state_get, speed_get, speed_set
 export SpiTaskFlags, SpiTask
 export SpiTaskFd, SpiTaskHdWrite, SpiTaskHdRead
 export SPI_TASK_LAST, SPI_TASK_CPHA, SPI_TASK_CPOL
@@ -46,6 +47,7 @@ SPI_TASK_ENDIAN_MASK = SpiTaskFlags(1 << 5)
 immutable SpiTask
 	flags::SpiTaskFlags # Task flags
 	addr::Cuint # Slave address
+	speed::Culong # Speed to use for transfer (0 for fallback)
 	bitsize::Cuint # Bitsize to use for transfer
 	wdata::Ptr{Void} # Write memory
 	rdata::Ptr{Void} # Read memory
@@ -74,8 +76,8 @@ _spi_task_count{T}(count::Integer, data::Array{T}) =
 _bit_to_byte(bits::Integer) = floor((bits + 7) / 8)
 
 function SpiTaskHdRead{T}(addr::Integer, read::Array{T};
-		count::Integer=0, bitsize::Integer=0, mode::Integer=0,
-		lsb_first::Bool=false, last::Bool=false)
+		count::Integer=0, speed::Integer=0, bitsize::Integer=0,
+		mode::Integer=0, lsb_first::Bool=false, last::Bool=false)
 	flags::SpiTaskFlags = _spi_task_flags(mode, lsb_first, last) |
 		SPI_TASK_HD_READ
 	bitsize::Cuint = _spi_task_bitsize(bitsize, T)
@@ -83,11 +85,11 @@ function SpiTaskHdRead{T}(addr::Integer, read::Array{T};
 	wdata::Ptr{Void} = C_NULL()
 	count::Csize_t = Csize_t(_spi_task_count(count, read))
 	@assert(sizeof(read) >= count * _bit_to_byte(bitsize))
-	SpiTask(flags, Cuint(addr), bitsize, wdata, rdata, count)
+	SpiTask(flags, Cuint(addr), speed, bitsize, wdata, rdata, count)
 end
 
 function SpiTaskHdWrite{T}(addr::Integer, write::Array{T}; count::UInt=0,
-		bitsize::Integer=0, mode::Integer=0,
+		speed::Integer=0, bitsize::Integer=0, mode::Integer=0,
 		lsb_first::Bool=false, last::Bool=false)
 	flags::SpiTaskFlags = _spi_task_flags(mode, lsb_first, last) |
 		SPI_TASK_HD_WRITE
@@ -96,11 +98,11 @@ function SpiTaskHdWrite{T}(addr::Integer, write::Array{T}; count::UInt=0,
 	wdata::Ptr{Void} = Ptr{Void}(pointer(write))
 	count::Csize_t = Csize_t(_spi_task_count(count, read))
 	@assert(sizeof(write) >= count * _bit_to_byte(bitsize))
-	SpiTask(flags, Cuint(addr), bitsize, wdata, rdata, count)
+	SpiTask(flags, Cuint(addr), speed, bitsize, wdata, rdata, count)
 end
 
 function SpiTaskFd{T}(addr::Integer, write::Array{T}, read::Array{T};
-		count::Integer=0, bitsize::Integer=0, mode::Integer=0,
+		count::Integer=0, speed::Integer=0, bitsize::Integer=0, mode::Integer=0,
 		lsb_first::Bool=false, last::Bool=false)
 	flags::SpiTaskFlags = _spi_task_flags(mode, lsb_first, last) | SPI_TASK_FD
 	bitsize::Cuint = Cuint(_spi_task_bitsize(bitsize, T))
@@ -110,56 +112,88 @@ function SpiTaskFd{T}(addr::Integer, write::Array{T}, read::Array{T};
 	bytes_req = count * _bit_to_byte(bitsize)
 	@assert(sizeof(read) >= bytes_req)
 	@assert(sizeof(write) >= bytes_req)
-	SpiTask(flags, Cuint(addr), bitsize, wdata, rdata, count)
+	SpiTask(flags, Cuint(addr), speed, bitsize, wdata, rdata, count)
+end
+
+immutable SpiRef
+	high::Float64
+	low::Float64
+	type_::RefType
+end
+
+immutable SpiLabel
+	sclk::Ptr{UInt8}
+	mosi::Ptr{UInt8}
+	miso::Ptr{UInt8}
+	ss::Ptr{Ptr{UInt8}}
+end
+
+immutable SpiBitsize
+	values::Ptr{Cuint}
+	count::Csize_t
+end
+
+immutable SpiSpeed
+	values::Ptr{Culong}
+	count::Csize_t
 end
 
 immutable Spi
 	header::Module_
-	bitsize::Ptr{Bitsize}
-	buffer::Ptr{Buffer}
-	capab::Ptr{Capab}
-	count::Ptr{Count}
-	label::Ptr{Label}
-	ref::Ptr{Ref_}
-	speed::Ptr{Speed}
+	ss_count::Cuint
+	label::SpiLabel
+	bitsize::SpiBitsize
+	speed::SpiSpeed
+	ref::SpiRef
 end
 
-start(mod::Ptr{Spi}, tasks::Ref{SpiTask}, failed_task_index::Ref{Cint},
+master_prepare(mod::Ptr{Spi}) =
+	act(ccall(("b0_spi_master_prepare", "libbox0"), ResultCode, (Ptr{Spi}, ), mod))
+
+master_start(mod::Ptr{Spi}, tasks::Ref{SpiTask}, failed_task_index::Ref{Cint},
 		failed_task_ack::Ref{Cint}) =
-	act(ccall(("b0_spi_start", "libbox0"), ResultCode,
+	act(ccall(("b0_spi_master_start", "libbox0"), ResultCode,
 		(Ptr{Spi}, Ptr{SpiTask}, Ptr{Cint}, Ptr{Cint}),
 		mod, tasks, failed_task_index, failed_task_ack))
 
-function start(mod::Ptr{Spi}, tasks::Ref{SpiTask})
+function master_start(mod::Ptr{Spi}, tasks::Ref{SpiTask})
 	failed_task_index = Ref{Cint}(0)
 	failed_task_ack = Ref{Cint}(0)
-	start(mod, tasks, failed_task_index, failed_task_ack)
+	master_start(mod, tasks, failed_task_index, failed_task_ack)
 	return failed_task_index[], failed_task_ack[]
 end
 
-start(mod::Ptr{Spi}, tasks::Array{SpiTask}) = start(mod, pointer(tasks))
-start(mod::Ptr{Spi}, task::SpiTask) = (
+master_start(mod::Ptr{Spi}, tasks::Array{SpiTask}) = start(mod, pointer(tasks))
+master_start(mod::Ptr{Spi}, task::SpiTask) = (
 	(task.flags & SPI_TASK_LAST) != 0 || error("LAST flag missing on task");
-	start(mod, Ref(task))
+	master_start(mod, Ref(task))
 )
 
-stop(mod::Ptr{Spi}) =
-	act(ccall(("b0_spi_stop", "libbox0"), ResultCode, (Ptr{Spi}, ), mod))
+master_stop(mod::Ptr{Spi}) =
+	act(ccall(("b0_spi_master_stop", "libbox0"), ResultCode, (Ptr{Spi}, ), mod))
 
-active_state(mod::Ptr{Spi}, addr::Cuint, val::Cbool) =
+active_state_set(mod::Ptr{Spi}, addr::Cuint, val::Cbool) =
 	act(ccall(("b0_spi_active_state_set", "libbox0"), ResultCode,
 		(Ptr{Spi}, Cuint, Cbool), mod, bSS, val))
 
 #NOTE: remove in future if julia convert Bool and Cbool transparently
-active_state(mod::Ptr{Spi}, addr::UInt, val::Bool) =
+active_state_set(mod::Ptr{Spi}, addr::Cuint, val::Bool) =
 	active_state(mod, Cuint(addr), Cbool(val))
 
-active_state(mod::Ptr{Spi}, addr::Cuint, val::Ref{Cbool}) =
+active_state_get(mod::Ptr{Spi}, addr::Cuint, val::Ref{Cbool}) =
 	act(ccall(("b0_spi_active_state_get", "libbox0"), ResultCode,
 		(Ptr{Spi}, Cuint, Ref{Cbool}), mod, bSS, val))
 
-function active_state(mod::Ptr{Spi}, addr::UInt)
+function active_state_get(mod::Ptr{Spi}, addr::Cuint)
 	val = Ref{Cbool}(0)
 	active_state(mod, Cuint(addr), val)
-	val[]
+	Bool(val[])
 end
+
+speed_set(mod::Ptr{Spi}, speed::Culong) =
+	act(ccall(("b0_spi_speed_set", "libbox0"), ResultCode,
+			(Ptr{Spi}, Culong), mod, speed))
+
+speed_get(mod::Ptr{Spi}, speed::Ref{Culong}) =
+	act(ccall(("b0_spi_speed_get", "libbox0"), ResultCode,
+			(Ptr{Spi}, Ptr{Culong}), mod, speed))

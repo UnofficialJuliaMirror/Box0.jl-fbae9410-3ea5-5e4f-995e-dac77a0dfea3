@@ -1,6 +1,6 @@
 #
 # This file is part of Box0.jl.
-# Copyright (C) 2015 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+# Copyright (C) 2015, 2016 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
 #
 # Box0.jl is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # along with Box0.jl.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-export close, info, ping, manuf, name, serial
+export close, ping, manuf, name, serial
 
 close(dev::Ptr{Device}) = act(ccall(("b0_device_close", "libbox0"),
 		ResultCode, (Ptr{Device}, ), dev))
@@ -24,12 +24,9 @@ close(dev::Ptr{Device}) = act(ccall(("b0_device_close", "libbox0"),
 ping(dev::Ptr{Device}) = act(ccall(("b0_device_ping", "libbox0"),
 		ResultCode, (Ptr{Device}, ), dev))
 
-info(dev::Ptr{Device}) = act(ccall(("b0_device_info", "libbox0"),
-		ResultCode, (Ptr{Device}, ), dev))
-
-name(dev::Ptr{Device}) = bytestring(deref(dev).name)
-manuf(dev::Ptr{Device}) = bytestring(deref(dev).manuf)
-serial(dev::Ptr{Device}) = bytestring(deref(dev).serial)
+name(dev::Ptr{Device}) = unsafe_string(deref(dev).name)
+manuf(dev::Ptr{Device}) = unsafe_string(deref(dev).manuf)
+serial(dev::Ptr{Device}) = unsafe_string(deref(dev).serial)
 
 # internal work
 module_offset_valid(dev::Ptr{Device}, i::Csize_t) = (i <= deref(dev).modules_len)

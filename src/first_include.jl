@@ -47,3 +47,7 @@ immutable Module_
 end
 
 typealias Device _Device{Module_}
+
+typealias RefType Cint
+VOLTAGE = RefType(0)
+CURRENT = RefType(1)

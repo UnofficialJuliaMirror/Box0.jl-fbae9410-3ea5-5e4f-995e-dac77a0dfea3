@@ -1,6 +1,6 @@
 #
 # This file is part of Box0.jl.
-# Copyright (C) 2015 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+# Copyright (C) 2015, 2016 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
 #
 # Box0.jl is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,21 +36,6 @@ include("result_exception.jl")
 include("device.jl")
 
 include("backend/usb.jl")
-
-include("property/property.jl")
-include("property/count.jl")
-include("property/buffer.jl")
-include("property/capab.jl")
-include("property/chan_config.jl")
-include("property/ref.jl")
-include("property/stream.jl")
-include("property/repeat.jl")
-include("property/i2c_version.jl")
-include("property/label.jl")
-include("property/bitsize.jl")
-include("property/chan_seq.jl")
-include("property/speed.jl")
-include("property/last_include.jl")
 
 include("module/module.jl")
 include("module/ain.jl")

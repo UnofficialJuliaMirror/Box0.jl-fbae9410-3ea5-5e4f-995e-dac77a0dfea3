@@ -1,6 +1,6 @@
 #
 # This file is part of Box0.jl.
-# Copyright (C) 2015 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+# Copyright (C) 2015, 2016 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
 #
 # Box0.jl is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,38 +17,54 @@
 #
 
 export LOW, HIGH, DISABLE, ENABLE, INPUT, OUTPUT
-export Dio, Pin, PinGroup, UInt8
+export Dio, Pin, PinGroup
 export input, output, high, low, toggle, enable, disable
-export value, value_toggle, dir, hiz
-export static_prepare
+export value_set, value_get, value_toggle, dir_get, dir_set, hiz_set, hiz_get
+export basic_prepare, basic_start, basic_stop
 export pin, pin_group
+export DIO_CAPAB_OUTPUT, DIO_CAPAB_INPUT, DIO_CAPAB_HIZ
+
+typealias DioCapab Cint
+DIO_CAPAB_OUTPUT = DioCapab(1 << 0)
+DIO_CAPAB_INPUT = DioCapab(1 << 1)
+DIO_CAPAB_HIZ = DioCapab(1 << 2)
+
+immutable DioLabel
+	pin::Ptr{Ptr{UInt8}}
+end
+
+immutable DioRef
+	high::Float64
+	low::Float64
+	type_::RefType
+end
 
 immutable Dio
 	header::Module_
-	capab::Ptr{Capab}
-	count::Ptr{Count}
-	label::Ptr{Label}
-	ref::Ptr{Ref_}
+	pin_count::Cuint
+	capab::DioCapab
+	label::DioLabel
+	ref::DioRef
 end
 
 #pin
 type Pin
-	mod::Ptr{Dio}
-	val::UInt8
+	module_::Ptr{Dio}
+	index::Cuint
 end
 
-pin(mod::Ptr{Dio}, val::UInt8) = Pin(mod, val)
-pin(mod::Ptr{Dio}, val::Integer) = pin(mod, UInt8(val))
+pin(mod::Ptr{Dio}, val::Cuint) = Pin(mod, val)
+pin(mod::Ptr{Dio}, val::Integer) = pin(mod, Cuint(val))
 
 #pin group
 type PinGroup
-	mod::Ptr{Dio}
-	vals::Array{UInt8}
+	module_::Ptr{Dio}
+	indexes::Array{Cuint}
 end
 
-pin_group(mod::Ptr{Dio}, vals::Array{UInt8}) = PinGroup(mod, vals)
+pin_group(mod::Ptr{Dio}, indexes::Array{Cuint}) = PinGroup(mod, indexes)
 #TODO: convert to array from tuple
-pin_group(mod::Ptr{Dio}, val::UInt8...) = PinGroup(mod, val...)
+pin_group(mod::Ptr{Dio}, indexes::Cuint...) = PinGroup(mod, indexes...)
 
 const LOW = false
 const HIGH = true
@@ -59,165 +75,175 @@ const ENABLE = true
 const INPUT = false
 const OUTPUT = true
 
-static_prepare(mod::Ptr{Dio}) =
-	act(ccall(("b0_dio_static_prepare", "libbox0"), ResultCode, (Ptr{Dio}, ), mod))
+basic_prepare(mod::Ptr{Dio}) =
+	act(ccall(("b0_dio_basic_prepare", "libbox0"), ResultCode, (Ptr{Dio}, ), mod))
 
-for n in ("dir", "value", "hiz")
-	func = @eval Symbol($n)
-	func_get = @eval "b0_dio_"*$n*"_get"
-	func_set = @eval "b0_dio_"*$n*"_set"
+basic_start(mod::Ptr{Dio}) =
+	act(ccall(("b0_dio_basic_start", "libbox0"), ResultCode, (Ptr{Dio}, ), mod))
+
+basic_stop(mod::Ptr{Dio}) =
+	act(ccall(("b0_dio_basic_stop", "libbox0"), ResultCode, (Ptr{Dio}, ), mod))
+
+for n::String in ("dir", "value", "hiz")
+	func_get = Symbol(n*"_get")
+	func_set = Symbol(n*"_set")
+
+	cfunc_get = "b0_dio_"*n*"_get"
+	cfunc_set = "b0_dio_"*n*"_set"
 
 	@eval begin
-		$func(mod::Ptr{Dio}, pin::UInt8, val::Cbool) =
-			act(ccall(($func_set, "libbox0"), ResultCode,
-				(Ptr{Dio}, UInt8, Cbool), mod, pin, val))
+		$func_set(mod::Ptr{Dio}, pin::Cuint, val::Cbool) =
+			act(ccall(($cfunc_set, "libbox0"), ResultCode,
+				(Ptr{Dio}, Cuint, Cbool), mod, pin, val))
 
 		#NOTE: remove in future if julia convert Bool and Cbool transparently
-		$func(mod::Ptr{Dio}, pin::UInt8, val::Bool) = $func(mod, pin, Cbool(val))
+		$func_set(mod::Ptr{Dio}, pin::Cuint, val::Bool) = $func_set(mod, pin, Cbool(val))
 
-		$func(mod::Ptr{Dio}, pin::UInt8, val::Ref{Cbool}) =
-			act(ccall(($func_get, "libbox0"), ResultCode,
-				(Ptr{Dio}, UInt8, Ref{Cbool}), mod, pin, val))
-
-		$func(mod::Ptr{Dio}, pin::UInt8) =
-			(val = Ref{Cbool}(0); $func(mod, pin, val); return Bool(val[]);)
-
-		$func(pin::Pin, val::Cbool) = $func(pin.mod, pin.val, val)
+		$func_set(pin::Pin, val::Cbool) = $func_set(pin.module_, pin.index, val)
 
 		#NOTE: remove in future if julia convert Bool and Cbool transparently
-		$func(pin::Pin, val::Bool) = $func(pin, Cbool(val))
+		$func_set(pin::Pin, val::Bool) = $func_set(pin, Cbool(val))
 
-		$func(pin::Pin, val::Ref{Cbool}) = $func(pin.mod, pin.val, val)
-		$func(pin::Pin) = $func(pin.mod, pin.val)
+		# ---
+
+		$func_get(mod::Ptr{Dio}, pin::Cuint, val::Ref{Cbool}) =
+			act(ccall(($cfunc_get, "libbox0"), ResultCode,
+				(Ptr{Dio}, Cuint, Ref{Cbool}), mod, pin, val))
+
+		$func_get(mod::Ptr{Dio}, pin::Cuint) =
+			(val = Ref{Cbool}(0); $func_get(mod, pin, val); return Bool(val[]);)
+
+		$func_get(pin::Pin, val::Ref{Cbool}) = $func_get(pin.module_, pin.index, val)
+		$func_get(pin::Pin) = $func_get(pin.module_, pin.index)
 	end
 
-	func_get = @eval "b0_dio_multiple_"*$n*"_get"
-	func_set = @eval "b0_dio_multiple_"*$n*"_set"
+	cfunc_get = "b0_dio_multiple_"*n*"_get"
+	cfunc_set = "b0_dio_multiple_"*n*"_set"
 
 	@eval begin
-		$func(mod::Ptr{Dio}, pins::Ptr{UInt8}, size::Csize_t, val::Cbool) =
-			act(ccall(($func_set, "libbox0"), ResultCode,
-				(Ptr{Dio}, Ptr{UInt8}, Csize_t, Cbool), mod, pins, size, val))
+		$func_set(mod::Ptr{Dio}, pins::Ptr{Cuint}, size::Csize_t, val::Cbool) =
+			act(ccall(($cfunc_set, "libbox0"), ResultCode,
+				(Ptr{Dio}, Ptr{Cuint}, Csize_t, Cbool), mod, pins, size, val))
 
 		#NOTE: remove in future if julia convert Bool and Cbool transparently
-		$func(mod::Ptr{Dio}, pins::Ptr{UInt8}, size::Csize_t, val::Bool) =
-			$func(mod, pins, size, Cbool(val))
+		$func_set(mod::Ptr{Dio}, pins::Ptr{Cuint}, size::Csize_t, val::Bool) =
+			$func_set(mod, pins, size, Cbool(val))
 
-		$func(mod::Ptr{Dio}, pins::Ptr{UInt8}, vals::Ptr{Cbool}, size::Csize_t) =
-			act(ccall(($func_get, "libbox0"), ResultCode,
-				(Ptr{Dio}, Ptr{UInt8}, Ptr{Cbool}, Csize_t), mod, pins, vals, size))
+		$func_set(mod::Ptr{Dio}, pins::Array{Cuint}, val::Bool) =
+			$func_set(mod, pointer(pins), Csize_t(length(pins)), val)
 
-		$func(mod::Ptr{Dio}, pins::Array{UInt8}, val::Cbool) =
-			$func(mod, pointer(pins), Csize_t(length(pins)), val)
+		$func_set(pin_group::PinGroup, val::Cbool) =
+			$func_set(pin_group.module_, pin_group.indexes, val)
 
 		#NOTE: remove in future if julia convert Bool and Cbool transparently
-		$func(mod::Ptr{Dio}, pins::Array{UInt8}, val::Bool) = $func(mod, pins, val)
+		$func_set(pin_group::PinGroup, val::Bool) = $func_set(pin_group, Cbool(val))
 
-		$func(mod::Ptr{Dio}, pins::Array{UInt8}, vals::Array{Cbool}) = (
+		# ---
+
+		$func_get(mod::Ptr{Dio}, pins::Ptr{Cuint}, values::Ptr{Cbool}, size::Csize_t) =
+			act(ccall(($cfunc_get, "libbox0"), ResultCode,
+				(Ptr{Dio}, Ptr{Cuint}, Ptr{Cbool}, Csize_t), mod, pins, values, size))
+
+		$func_get(mod::Ptr{Dio}, pins::Array{Cuint}, values::Array{Cbool}) = (
 			@assert length(pins) == length(vals);
-			$func(mod, pointer(pins), pointer(vals), Csize_t(length(pins)))
+			$func_get(mod, pointer(pins), pointer(values), Csize_t(length(pins)))
 		)
 
-		$func(pin_group::Ptr{Pin}, val::Cbool) =
-			$func(pin_group.mod, pin_group.vals, val)
-
-		#NOTE: remove in future if julia convert Bool and Cbool transparently
-		$func(pin_group::Ptr{Pin}, val::Bool) = $func(pin_group, Cbool(val))
-
-		$func(pin_group::Ptr{Pin}, vals::Ptr{Cbool}, size::Csize_t) = (
-			@assert length(pin_group.vals) == size;
-			$func(pin_group.mod, pointer(pin_group.vals), vals, size)
+		$func_get(pin_group::PinGroup, values::Ptr{Cbool}, size::Csize_t) = (
+			@assert length(pin_group.indexes) == size;
+			$func_get(pin_group.module_, pointer(pin_group.indexes), values, size)
 		)
 
-		$func(pin_group::Ptr{Pin}, vals::Array{Cbool}) =
-			$func(pin_group.mod, pin_group.vals, vals)
+		$func_get(pin_group::PinGroup, values::Array{Cbool}) =
+			$func_get(pin_group.module_, pin_group.indexes, values)
 	end
 
-	func_get = @eval "b0_dio_all_"*$n*"_get"
-	func_set = @eval "b0_dio_all_"*$n*"_set"
+	cfunc_get = "b0_dio_all_"*n*"_get"
+	cfunc_set = "b0_dio_all_"*n*"_set"
 
 	@eval begin
-		$func(mod::Ptr{Dio}, val::Cbool) =
-			act(ccall(($func_set, "libbox0"), ResultCode,
+		$func_set(mod::Ptr{Dio}, val::Cbool) =
+			act(ccall(($cfunc_set, "libbox0"), ResultCode,
 				(Ptr{Dio}, Cbool), mod, val))
 
 		#NOTE: remove in future if julia convert Bool and Cbool transparently
-		$func(mod::Ptr{Dio}, val::Bool) = $func(mod, Cbool(val))
+		$func_set(mod::Ptr{Dio}, val::Bool) = $func_set(mod, Cbool(val))
+
+		# ---
 
 		# using this function can be dangerous.
 		# it assume that the array length is equal to number of pins
-		$func(mod::Ptr{Dio}, vals::Ptr{Cbool}) =
-			act(ccall(($func_get, "libbox0"), ResultCode,
-				(Ptr{Dio}, Ptr{Cbool}), mod, vals))
+		$func_get(mod::Ptr{Dio}, values::Ptr{Cbool}) =
+			act(ccall(($cfunc_get, "libbox0"), ResultCode,
+				(Ptr{Dio}, Ptr{Cbool}), mod, values))
 
-		$func(mod::Ptr{Dio}, vals::Array{Cbool}) = (
+		$func_get(mod::Ptr{Dio}, values::Array{Cbool}) = (
 			@assert length(val) >= mod.count.value;
-			$func(mod, pointer(vals))
+			$func_get(mod, pointer(values))
 		)
 	end
 end
 
 #special case: value toggle
-value_toggle(mod::Ptr{Dio}, pin::UInt8) =
+value_toggle(mod::Ptr{Dio}, pin::Cuint) =
 	act(ccall(("b0_dio_value_toggle", "libbox0"), ResultCode,
-		(Ptr{Dio}, UInt8), mod, pin))
+		(Ptr{Dio}, Cuint), mod, pin))
 
-value_toggle(mod::Ptr{Dio}, pins::Ptr{UInt8}, size::Csize_t) =
+value_toggle(mod::Ptr{Dio}, pins::Ptr{Cuint}, size::Csize_t) =
 	act(ccall(("b0_dio_multiple_value_toggle", "libbox0"), ResultCode,
-		(Ptr{Dio}, Ptr{UInt8}, Csize_t), mod, pins, size))
+		(Ptr{Dio}, Ptr{Cuint}, Csize_t), mod, pins, size))
 
-value_toggle(mod::Ptr{Dio}, pins::Array{UInt8}) =
+value_toggle(mod::Ptr{Dio}, pins::Array{Cuint}) =
 	value_toggle(mod, pointer(pins), Csize_t(length(pins)))
 
 value_toggle(mod::Ptr{Dio}) =
 	act(ccall(("b0_dio_all_value_toggle", "libbox0"), ResultCode, (Ptr{Dio}, ), dio))
 
-value_toggle(pin::Pin) = value_toggle(pin.mod, pin.val)
+value_toggle(pin::Pin) = value_toggle(pin.module_, pin.index)
 
-value_toggle(pin_group::PinGroup) = value_toggle(pin_group.mod, pin_group.vals)
+value_toggle(pin_group::PinGroup) = value_toggle(pin_group.module_, pin_group.indexes)
 
 #easy to use (single)
-input(mod::Ptr{Dio}, pin::UInt8) = dir(mod, pin, INPUT)
-output(mod::Ptr{Dio}, pin::UInt8) = dir(mod, pin, OUTPUT)
-high(mod::Ptr{Dio}, pin::UInt8) = value(mod, pin, HIGH)
-low(mod::Ptr{Dio}, pin::UInt8) = value(mod, pin, LOW)
-toggle(mod::Ptr{Dio}, pin::UInt8) = value_toggle(mod, pin)
-enable(mod::Ptr{Dio}, pin::UInt8) = hiz(mod, pin, DISABLE)
-disable(mod::Ptr{Dio}, pin::UInt8) = hiz(mod, pin, ENABLE)
+input(mod::Ptr{Dio}, pin::Cuint) = dir_set(mod, pin, INPUT)
+output(mod::Ptr{Dio}, pin::Cuint) = dir_set(mod, pin, OUTPUT)
+high(mod::Ptr{Dio}, pin::Cuint) = value_set(mod, pin, HIGH)
+low(mod::Ptr{Dio}, pin::Cuint) = value_set(mod, pin, LOW)
+toggle(mod::Ptr{Dio}, pin::Cuint) = value_toggle(mod, pin)
+enable(mod::Ptr{Dio}, pin::Cuint) = hiz_set(mod, pin, DISABLE)
+disable(mod::Ptr{Dio}, pin::Cuint) = hiz_set(mod, pin, ENABLE)
 
 #easy to use (multiple)
-input(mod::Ptr{Dio}, pins::Ptr{UInt8}) = dir(mod, pins, INPUT)
-output(mod::Ptr{Dio}, pins::Ptr{UInt8}) = dir(mod, pins, OUTPUT)
-high(mod::Ptr{Dio}, pins::Ptr{UInt8}) = value(mod, pins, HIGH)
-low(mod::Ptr{Dio}, pins::Ptr{UInt8}) = value(mod, pins, LOW)
-toggle(mod::Ptr{Dio}, pins::Ptr{UInt8}, size::Csize_t) = value_toggle(mod, pins, size)
-toggle(mod::Ptr{Dio}, pins::Array{UInt8}) = value_toggle(mod, pins)
-enable(mod::Ptr{Dio}, pins::Ptr{UInt8}) = hiz(mod, pins, DISABLE)
-disable(mod::Ptr{Dio}, pins::Ptr{UInt8}) = hiz(mod, pins, ENABLE)
+input(mod::Ptr{Dio}, pins::Array{Cuint}) = dir_set(mod, pins, INPUT)
+output(mod::Ptr{Dio}, pins::Array{Cuint}) = dir_set(mod, pins, OUTPUT)
+high(mod::Ptr{Dio}, pins::Array{Cuint}) = value_set(mod, pins, HIGH)
+low(mod::Ptr{Dio}, pins::Array{Cuint}) = value_set(mod, pins, LOW)
+toggle(mod::Ptr{Dio}, pins::Array{Cuint}) = value_toggle(mod, pins)
+enable(mod::Ptr{Dio}, pins::Array{Cuint}) = hiz_set(mod, pins, DISABLE)
+disable(mod::Ptr{Dio}, pins::Array{Cuint}) = hiz_set(mod, pins, ENABLE)
 
 #easy to use (all)
-input(mod::Ptr{Dio}) = dir(mod, INPUT)
-output(mod::Ptr{Dio}) = dir(mod, OUTPUT)
-high(mod::Ptr{Dio}) = value(mod, HIGH)
-low(mod::Ptr{Dio}) = value(mod, LOW)
+input(mod::Ptr{Dio}) = dir_set(mod, INPUT)
+output(mod::Ptr{Dio}) = dir_set(mod, OUTPUT)
+high(mod::Ptr{Dio}) = value_set(mod, HIGH)
+low(mod::Ptr{Dio}) = value_set(mod, LOW)
 toggle(mod::Ptr{Dio}) = value_toggle(mod)
-enable(mod::Ptr{Dio}) = hiz(mod, DISABLE)
-disable(mod::Ptr{Dio}) = hiz(mod, ENABLE)
+enable(mod::Ptr{Dio}) = hiz_set(mod, DISABLE)
+disable(mod::Ptr{Dio}) = hiz_set(mod, ENABLE)
 
 # easy to use (pin)
-input(pin::Pin) = input(pin.mod, pin.val)
-output(pin::Pin) = output(pin.mod, pin.val)
-high(pin::Pin) = high(pin.mod, pin.val)
-low(pin::Pin) = low(pin.mod, pin.val)
-toggle(pin::Pin) = toggle(pin.mod, pin.val)
-enable(pin::Pin) = enable(pin.mod, pin.val)
-disable(pin::Pin) = disable(pin.mod, pin.val)
+input(pin::Pin) = input(pin.module_, pin.index)
+output(pin::Pin) = output(pin.module_, pin.index)
+high(pin::Pin) = high(pin.module_, pin.index)
+low(pin::Pin) = low(pin.module_, pin.index)
+toggle(pin::Pin) = toggle(pin.module_, pin.index)
+enable(pin::Pin) = enable(pin.module_, pin.index)
+disable(pin::Pin) = disable(pin.module_, pin.index)
 
 #easy to use (pin group)
-input(pin_group::PinGroup) = input(pin_group.mod, pin_group.vals)
-output(pin_group::PinGroup) = output(pin_group.mod, pin_group.vals)
-high(pin_group::PinGroup) = high(pin_group.mod, pin_group.vals)
-low(pin_group::PinGroup) = low(pin_group.mod, pin_group.vals)
-toggle(pin_group::PinGroup) = toggle(pin_group.mod, pin_group.vals)
-enable(pin_group::PinGroup) = enable(pin_group.mod, pin_group.vals)
-disable(pin_group::PinGroup) = disable(pin_group.mod, pin_group.vals)
+input(pin_group::PinGroup) = input(pin_group.module_, pin_group.indexes)
+output(pin_group::PinGroup) = output(pin_group.module_, pin_group.indexes)
+high(pin_group::PinGroup) = high(pin_group.module_, pin_group.indexes)
+low(pin_group::PinGroup) = low(pin_group.module_, pin_group.indexes)
+toggle(pin_group::PinGroup) = toggle(pin_group.module_, pin_group.indexes)
+enable(pin_group::PinGroup) = enable(pin_group.module_, pin_group.indexes)
+disable(pin_group::PinGroup) = disable(pin_group.module_, pin_group.indexes)

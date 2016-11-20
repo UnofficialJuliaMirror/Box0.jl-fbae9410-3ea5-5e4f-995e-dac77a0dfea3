@@ -1,6 +1,6 @@
 #
 # This file is part of Box0.jl.
-# Copyright (C) 2015 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+# Copyright (C) 2015, 2016 Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
 #
 # Box0.jl is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,88 +17,118 @@
 #
 
 export Pwm, PwmReg
-export width, period, set, calc, start, stop
+export output_prepare, output_start, output_stop, output_calc
+export width_get, width_set, period_set, period_get, speed_set, speed_get
+export bitsize_set, bitsize_get
+export output_calc_freq_error, output_calc_freq
+export output_calc_duty_cycle, output_calc_width
+
+immutable PwmRef
+	high::Float64
+	low::Float64
+	type_::RefType
+end
+
+immutable PwmLabel
+	pin::Ptr{Ptr{UInt8}}
+end
+
+immutable PwmBitsize
+	values::Ptr{Cuint}
+	count::Csize_t
+end
+
+immutable PwmSpeed
+	values::Ptr{Culong}
+	count::Csize_t
+end
 
 type Pwm
 	header::Module_
-	bitsize::Ptr{Bitsize}
-	capab::Ptr{Capab}
-	count::Ptr{Count}
-	label::Ptr{Label}
-	ref::Ptr{Ref_}
-	speed::Ptr{Speed}
+	pin_count::Cuint
+	label::PwmLabel
+	bitsize::PwmBitsize
+	speed::PwmSpeed
+	ref::PwmRef
 end
 
-typealias PwmReg Cuintmax_t
+typealias PwmReg Culonglong
 
-width(mod::Ptr{Pwm}, ch::UInt8, width::PwmReg) =
+width_set(mod::Ptr{Pwm}, ch::Cuint, width::PwmReg) =
 	act(ccall(("b0_pwm_width_set", "libbox0"), ResultCode,
-		(Ptr{Pwm}, UInt8, PwmReg), mod, ch, width))
+		(Ptr{Pwm}, Cuint, PwmReg), mod, ch, width))
 
-width(mod::Ptr{Pwm}, ch::UInt8, width::Ptr{PwmReg}) =
+width_get(mod::Ptr{Pwm}, ch::Cuint, width::Ptr{PwmReg}) =
 	act(ccall(("b0_pwm_width_get", "libbox0"), ResultCode,
-		(Ptr{Pwm}, UInt8, Ptr{PwmReg}), mod, ch, width))
+		(Ptr{Pwm}, Cuint, Ptr{PwmReg}), mod, ch, width))
 
-function width(mod::Ptr{Pwm}, ch::UInt8)
+function width_get(mod::Ptr{Pwm}, ch::Cuint)
 	val::PwmReg = 0
 	width(mod, Ptr{PwmReg}(pointer_to_objref(val)), ch)
 	return val
 end
 
-period(mod::Ptr{Pwm}, period::PwmReg) =
+period_set(mod::Ptr{Pwm}, period::PwmReg) =
 	act(ccall(("b0_pwm_period_set", "libbox0"), ResultCode,
 		(Ptr{Pwm}, PwmReg), mod, period))
 
-period(mod::Ptr{Pwm}, period::Ptr{PwmReg}) =
+period_get(mod::Ptr{Pwm}, period::Ptr{PwmReg}) =
 	act(ccall(("b0_pwm_period_get", "libbox0"), ResultCode,
 		(Ptr{Pwm}, Ptr{PwmReg}), mod, period))
 
-function period(mod::Ptr{Pwm})
+function period_get(mod::Ptr{Pwm})
 	val::PwmReg = 0
 	period(mod, Ptr{PwmReg}(pointer_to_objref(val)))
 	return val
 end
 
-const DUTY_CYCLE_HALF = Float64(50)
+speed_set(mod::Ptr{Pwm}, speed::Culong) =
+	act(ccall(("b0_pwm_speed_set", "libbox0"), ResultCode,
+			(Ptr{Pwm}, Culong), mod, speed))
 
-set(mod::Ptr{Pwm}, ch::UInt8, freq::Ref{Float64}, duty_cycle::Ref{Float64} = DUTY_CYCLE_HALF,
-							error::Ref{Float64} = C_NULL(Float64)) =
-	act(ccall(("b0_pwm_set", "libbox0"), ResultCode,
-		(Ptr{Pwm}, UInt8, Ref{Float64}, Ref{Float64}, Ref{Float64}),
-		mod, ch, freq, duty_cycle, error))
+speed_get(mod::Ptr{Pwm}, speed::Ptr{Culong}) =
+	act(ccall(("b0_pwm_speed_get", "libbox0"), ResultCode,
+			(Ptr{Pwm}, Ptr{Culong}), mod, speed))
 
-# for someone who only want to set values regardless or any fetchback
-set(mod::Ptr{Pwm}, ch::UInt8, freq::Float64, duty_cycle::Float64 = DUTY_CYCLE_HALF) =
-	set(mod, ch, Ref(freq), Ref{duty_cycle})
+bitsize_set(mod::Ptr{Pwm}, bitsize::Cuint) =
+	act(ccall(("b0_pwm_bitsize_set", "libbox0"), ResultCode,
+			(Ptr{Pwm}, Cuint), mod, bitsize))
 
-calc(mod::Ptr{Pwm}, freq::Float64, max_error::Float64,
-		speed::Ref{UInt32}, period::Ref{PwmReg}, best_result::Cbool = Cbool(true)) =
-	act(ccall(("b0_pwm_calc", "libbox0"), ResultCode,
-		(Ptr{Pwm}, Float64, Float64, Ref{UInt32}, Ref{PwmReg}),
-		mod, freq, max_error, speed, period))
+bitsize_get(mod::Ptr{Pwm}, bitsize::Ref{Cuint}) =
+	act(ccall(("b0_pwm_bitsize_get", "libbox0"), ResultCode,
+			(Ptr{Pwm}, Ptr{Cuint}), mod, bitsize))
 
-#NOTE: remove in future if julia convert Bool and Cbool transparently
-calc(mod::Ptr{Pwm}, freq::Float64, max_error::Float64,
-		speed::Ref{UInt32}, period::Ref{PwmReg}, best_result::Bool = true) =
-	calc(mod, freq, max_error, speed, period, Cbool(best_result))
+output_calc(mod::Ptr{Pwm}, bitsize::Cuint, freq::Float64,
+		speed::Ref{Culong}, period::Ref{PwmReg}, max_error::Float64,
+		best_result::Cbool = Cbool(true)) =
+	act(ccall(("b0_pwm_output_calc", "libbox0"), ResultCode,
+		(Ptr{Pwm}, Cuint, Float64, Ref{Culong}, Ref{PwmReg}, Float64, Cbool),
+		mod, bitsize, freq, speed, period, max_error, best_result))
 
-function calc(mod::Ptr{Pwm}, freq::Float64, error::Float64 = Float64(100))
-	speed = Ref{UInt32}(0)
+function output_calc(mod::Ptr{Pwm}, bitsize::Cuint, freq::Float64,
+			max_error::Float64 = Float64(100), best_result::Bool = true)
+	speed = Ref{Culong}(0)
 	period = Ref{PwmReg}(0)
-	calc(mod, freq, error, speed, period)
+	output_calc(mod, bitsize, freq, speed, period, max_error, Cbool(best_result))
 	return speed[], period[]
 end
 
-stop(mod::Ptr{Pwm}) =
-	act(ccall(("b0_pwm_stop", "libbox0"), ResultCode, (Ptr{Pwm}, ), mod))
+output_prepare(mod::Ptr{Pwm}) =
+	act(ccall(("b0_pwm_output_prepare", "libbox0"), ResultCode, (Ptr{Pwm}, ), mod))
 
-start(mod::Ptr{Pwm}) =
-	act(ccall(("b0_pwm_start", "libbox0"), ResultCode, (Ptr{Pwm}, ), mod))
+output_stop(mod::Ptr{Pwm}) =
+	act(ccall(("b0_pwm_output_stop", "libbox0"), ResultCode, (Ptr{Pwm}, ), mod))
 
-pwm_calc_width(period::Float64, duty_cycle::Float64) =
+output_start(mod::Ptr{Pwm}) =
+	act(ccall(("b0_pwm_output_start", "libbox0"), ResultCode, (Ptr{Pwm}, ), mod))
+
+output_calc_width(period::PwmReg, duty_cycle::Float64) =
 	PwmReg(period * duty_cycle / 100.0)
 
-pwm_calc_freq(speed::UInt32, period::PwmReg) = (speed / period)
+output_calc_duty_cycle(period::PwmReg, width::PwmReg) =
+	((width * 100.00) / period)
 
-pwm_calc_freq_error(required_freq::Float64, calc_freq::Float64) =
+output_calc_freq(speed::Culong, period::PwmReg) = (speed / period)
+
+output_calc_freq_error(required_freq::Float64, calc_freq::Float64) =
 	((abs(required_freq - calc_freq) * 100.0) / required_freq)

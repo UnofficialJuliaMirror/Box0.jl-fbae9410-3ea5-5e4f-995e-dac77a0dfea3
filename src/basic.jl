@@ -41,6 +41,11 @@ version_extract(v::Ref{Version} = C_NULL(Version)) =
 	ccall(("b0_version_extract", "libbox0"), UInt32, (Ref{Version}, ), v)
 
 Base.convert(::Type{VersionNumber}, v::Version) =
-    VersionNumber(v.major, v.minor, v.patch)
+	VersionNumber(v.major, v.minor, v.patch)
 
-version() = (z = zero(UInt8); v = Version(z, z, z); version_extract(Ref(v)); VersionNumber(v))
+function version()
+	z = zero(UInt8)
+	v = Ref(Version(z, z, z))
+	version_extract(v)
+	VersionNumber(v[])
+end

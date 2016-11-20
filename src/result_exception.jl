@@ -32,8 +32,8 @@ name(r::ResultCode) =
 explain(r::ResultCode) =
 	ccall(("b0_result_explain", "libbox0"), Ptr{UInt8}, (ResultCode, ), r)
 
-name(r::ResultException) = bytestring(name(r.value))
-explain(r::ResultException) = bytestring(explain(r.value))
+name(r::ResultException) = unsafe_string(name(r.value))
+explain(r::ResultException) = unsafe_string(explain(r.value))
 
 showerror(io::IO, r::ResultException) = print(io, name(r), ": ", explain(r))
 

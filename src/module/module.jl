@@ -16,7 +16,7 @@
 # along with Box0.jl.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-export info, search, name
+export search, name
 export DIO, AOUT, AIN, SPI, I2C, PWM, CAN, CEC, CMP, UNIO
 export name, index, type_, device
 
@@ -28,20 +28,17 @@ const I2C = ModuleType(5)
 const PWM = ModuleType(6)
 const UNIO = ModuleType(7)
 
-name(mod::Ptr{Module_}) = bytestring(deref(mod).name)
+name(mod::Ptr{Module_}) = unsafe_string(deref(mod).name)
 index(mod::Ptr{Module_}) = deref(mod).index
 type_(mod::Ptr{Module_}) = deref(mod).type_
 device(mod::Ptr{Module_}) = deref(mod).device
 
-info(mod::Ptr{Module_}) = act(ccall(("b0_module_info", "libbox0"),
-    ResultCode, (Ptr{Module_}, ), mod))
-
 function search(dev::Ptr{Device}, type_::ModuleType, index::Integer)
-	local mod::Ptr{Module_}
+	mod = Ref{Ptr{Module_}}(C_NULL(Module_))
 	act(ccall(("b0_module_search", "libbox0"),
 		ResultCode, (Ptr{Device}, Ptr{Ptr{Module_}}, ModuleType, Cint),
 		dev, pointer_from_objref(mod), type_, index))
-	return mod
+	return mod[]
 end
 
 function openable(mod::Ptr{Module_})
