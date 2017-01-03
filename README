@@ -9,7 +9,6 @@ Dependencies
 Actually: None
 
 * libbox0 (C library)
-* libusb (C library)
 
 Installation
 ============
@@ -41,9 +40,9 @@ GNU/GPLv3 or later (see COPYING)
 Credits and references
 ======================
 
-http://www.madresistor.org/
+https://www.madresistor.com/
 
 Maintainer
 ==========
 
-Kuldeep Singh Dhaka <kuldeepdhaka9@gmail.com>
+Kuldeep Singh Dhaka <kuldeep@madresistor.com>
