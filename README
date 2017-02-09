@@ -13,7 +13,11 @@ Actually: None
 Installation
 ============
 
-TODO: place instructions
+The package is registered in `METADATA.jl` and can be installed with `Pkg.add`.
+
+```
+julia> Pkg.add("Box0")
+```
 
 Configuration
 =============
