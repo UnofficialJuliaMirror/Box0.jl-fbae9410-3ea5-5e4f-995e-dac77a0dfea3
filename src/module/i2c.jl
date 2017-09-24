@@ -168,7 +168,7 @@ end
 
 master_slave_detect(mod::Ptr{I2c}, arg::Ref{I2cSugarArg}, detected::Ref{Cbool}) =
 	act(ccall(("b0_i2c_master_slave_detect", "libbox0"), ResultCode,
-		(Ptr{I2c}, arg, Ptr{Cbool}), mod, arg, detected))
+		(Ptr{I2c}, Ptr{I2cSugarArg}, Ptr{Cbool}), mod, arg, detected))
 
 function master_slave_detect(mod::Ptr{I2c}, arg::I2cSugarArg)
 	val = Ref{Cbool}(0)
