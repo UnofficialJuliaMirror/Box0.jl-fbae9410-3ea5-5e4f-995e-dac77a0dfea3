@@ -89,7 +89,7 @@ chan_seq_get(mod::Ptr{Aout}, values::Ptr{Cuint}, count::Ref{Csize_t}) =
 
 repeat_set(mod::Ptr{Aout}, value::Culong) =
 	act(ccall(("b0_aout_repeat_set", "libbox0"), ResultCode,
-			(Ptr{Aout}, Culong), value))
+			(Ptr{Aout}, Culong), mod, value))
 
 repeat_get(mod::Ptr{Aout}, value::Ptr{Culong}) =
 	act(ccall(("b0_aout_repeat_get", "libbox0"), ResultCode,
