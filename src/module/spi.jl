@@ -27,7 +27,7 @@ export SPI_TASK_FD, SPI_TASK_HD_READ, SPI_TASK_HD_WRITE
 export SPI_TASK_MSB_FIRST, SPI_TASK_LSB_FIRST
 export SPI_TASK_MODE_MASK, SPI_TASK_DUPLEX_MASK, SPI_TASK_ENDIAN_MASK
 
-typealias SpiTaskFlags Cint
+const SpiTaskFlags = Cint
 SPI_TASK_LAST = SpiTaskFlags(1 << 0) # Last task to execute
 SPI_TASK_CPHA = SpiTaskFlags(1 << 1)
 SPI_TASK_CPOL = SpiTaskFlags(1 << 2)

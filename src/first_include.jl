@@ -22,7 +22,7 @@ export Device, Module_, ModuleType, Backend
 #  support forward declaration
 # see: https://github.com/JuliaLang/julia/issues/269
 
-abstract Backend
+abstract type Backend end
 
 immutable _Device{M}
 	modules_len::Csize_t
@@ -35,7 +35,7 @@ immutable _Device{M}
 	_backend::Ptr{Backend}
 end
 
-typealias ModuleType Cint
+const ModuleType = Cint
 
 immutable Module_
 	type_::ModuleType
@@ -46,8 +46,8 @@ immutable Module_
 	_frontend_data::Ptr{Void}
 end
 
-typealias Device _Device{Module_}
+const Device = _Device{Module_}
 
-typealias RefType Cint
+const RefType = Cint
 VOLTAGE = RefType(0)
 CURRENT = RefType(1)

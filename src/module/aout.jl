@@ -26,7 +26,7 @@ export AIN_CAPAB_ALIGN_LSB, AIN_CAPAB_ALIGN_MSB
 export AIN_CAPAB_ENDIAN_LITTLE, AIN_CAPAB_ENDIAN_BIG
 export AIN_CAPAB_REPEAT
 
-typealias AoutCapab Cint
+const AoutCapab = Cint
 AIN_CAPAB_FORMAT_2COMPL = AoutCapab(1 << 0)
 AIN_CAPAB_FORMAT_BINARY = AoutCapab(0 << 0)
 AIN_CAPAB_ALIGN_LSB = AoutCapab(0 << 1)

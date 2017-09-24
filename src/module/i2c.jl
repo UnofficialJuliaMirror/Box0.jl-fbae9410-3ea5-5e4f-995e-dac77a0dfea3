@@ -24,13 +24,13 @@ export I2C_TASK_LAST, I2C_TASK_WRITE, I2C_TASK_READ, I2C_TASK_DIR_MASK
 export I2C_VERSION_SM, I2C_VERSION_FM, I2C_VERSION_HS, I2C_VERSION_HS_CLEANUP1
 export I2C_VERSION_FMPLUS, I2C_VERSION_UFM, I2C_VERSION_VER5, I2C_VERSION_VER6
 
-typealias I2cTaskFlags Cint
+const I2cTaskFlags = Cint
 I2C_TASK_LAST = I2cTaskFlags(1 << 0) # Last task to execute
 I2C_TASK_WRITE = I2cTaskFlags(0 << 1) # Perform write
 I2C_TASK_READ = I2cTaskFlags(1 << 1) # Perform read
 I2C_TASK_DIR_MASK = I2cTaskFlags(1 << 1)
 
-typealias I2cVersion Cint
+const I2cVersion = Cint
 I2C_VERSION_SM = I2cVersion(0)
 I2C_VERSION_FM = I2cVersion(1)
 I2C_VERSION_HS = I2cVersion(2)

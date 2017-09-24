@@ -23,7 +23,7 @@ module Box0
 C_NULL{T}(::Type{T} = Type{Void}) = Ptr{T}(0)
 
 # like Cint, Csize_t and other...
-typealias Cbool Cint
+const Cbool = Cint
 
 Base.convert(::Type{Bool}, x::Cbool) = (x != 0)
 
@@ -31,8 +31,8 @@ export deref #others can use
 deref{T}(v::Ptr{T}) = unsafe_load(v, 1)
 
 include("first_include.jl")
-include("basic.jl")
 include("result_exception.jl")
+include("basic.jl")
 include("device.jl")
 
 include("backend/usb.jl")

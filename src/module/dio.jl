@@ -24,7 +24,7 @@ export basic_prepare, basic_start, basic_stop
 export pin, pin_group
 export DIO_CAPAB_OUTPUT, DIO_CAPAB_INPUT, DIO_CAPAB_HIZ
 
-typealias DioCapab Cint
+const DioCapab = Cint
 DIO_CAPAB_OUTPUT = DioCapab(1 << 0)
 DIO_CAPAB_INPUT = DioCapab(1 << 1)
 DIO_CAPAB_HIZ = DioCapab(1 << 2)

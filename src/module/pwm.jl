@@ -52,7 +52,7 @@ type Pwm
 	ref::PwmRef
 end
 
-typealias PwmReg Culonglong
+const PwmReg = Culonglong
 
 width_set(mod::Ptr{Pwm}, ch::Cuint, width::PwmReg) =
 	act(ccall(("b0_pwm_width_set", "libbox0"), ResultCode,

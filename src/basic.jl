@@ -21,7 +21,7 @@ export NONE, ERROR, WARN, INFO, DEBUG
 
 import Box0: Device
 
-typealias LogLevel Cint
+const LogLevel = Cint
 const NONE = LogLevel(0)
 const ERROR = LogLevel(1)
 const WARN = LogLevel(2)

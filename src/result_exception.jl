@@ -19,7 +19,7 @@
 export ResultException
 export name, explain
 
-typealias ResultCode Cint
+const ResultCode = Cint
 
 immutable ResultException <: Exception
 	value::ResultCode
