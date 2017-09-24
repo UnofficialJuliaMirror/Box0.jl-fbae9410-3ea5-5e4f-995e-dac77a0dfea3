@@ -154,7 +154,7 @@ master_write{T}(mod::Ptr{I2c}, arg::I2cSugarArg, data::Array{T}) =
 
 master_slave_id(mod::Ptr{I2c}, arg::Ref{I2cSugarArg},
 		manuf::Ref{UInt16}, part::Ref{UInt16}, rev::Ref{UInt8}) =
-	act(ccall(("b0_i2c_master_slave_detect", "libbox0"), ResultCode,
+	act(ccall(("b0_i2c_master_slave_id", "libbox0"), ResultCode,
 		(Ptr{I2c}, Ptr{I2cSugarArg}, Ref{UInt16}, Ref{UInt8}, Ref{UInt8}),
 		mod, arg, manuf, part, rev))
 
